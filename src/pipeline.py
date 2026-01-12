@@ -32,12 +32,19 @@ class PipelineOrchestrator:
         self._y_train_after = None
         self._feature_names = None
 
-    def add_model(self, name: str, model_instance):
+    def add_model(self, name: str, model_instance) -> None:
+        """Register a model with a name.
+
+        Args:
+            name: Unique name for the model
+            model_instance: Object implementing ``train`` and ``predict`` (e.g., a SklearnModelAdapter)
+        """
+        if name in self.models:
+            raise ValueError(f"Model with name '{name}' already registered")
         self.models[name] = model_instance
 
-    def run(self, enable_visualization: bool = True):
-        """
-        Execute the full ML pipeline with optional visualization.
+    def run(self, enable_visualization: bool = True) -> pd.DataFrame:
+        """Execute the full ML pipeline with optional visualization.
         
         Args:
             enable_visualization: Whether to generate visualization plots
