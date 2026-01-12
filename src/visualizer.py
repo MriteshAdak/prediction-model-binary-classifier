@@ -252,66 +252,76 @@ class MatplotlibVisualizer(IVisualizer):
     def generate_all_plots(self, results: pd.DataFrame, models_dict: Dict,
                           X_test, y_test, y_train_before, y_train_after,
                           feature_names: List[str]) -> Dict[str, str]:
-        """
-        Generate all visualization plots in one call.
-        
-        Args:
-            results: Performance metrics DataFrame
-            models_dict: Dictionary of trained models
-            X_test: Test features
-            y_test: Test labels
-            y_train_before: Training labels before oversampling
-            y_train_after: Training labels after oversampling
-            feature_names: List of feature names
-            
+        """Generate all visualization plots.
+
+        Notes on models_dict items:
+        - Each value is expected to implement ``predict``.
+        - To inspect optional methods/attributes (``predict_proba``, ``feature_importances_``),
+          this method will try to access either ``model`` (adapter) or the object itself.
+
         Returns:
-            Dictionary mapping plot type to file path
+            Mapping from plot name to saved file path.
         """
         print("\n" + "="*50)
         print("GENERATING VISUALIZATIONS")
         print("="*50)
-        
+
         output_paths = {}
-        
+
         # 1. Performance comparison
         output_paths['performance'] = self.generate_performance_comparison(results)
-        
+
         # 2. Prepare predictions for confusion matrices and ROC curves
         model_predictions = {}
         for name, model in models_dict.items():
+            # Predict using the model object (adapter expects .predict)
             y_pred = model.predict(X_test)
+
             pred_data = {
                 'y_true': y_test,
                 'y_pred': y_pred
             }
-            
-            # Get probability predictions if available
-            if hasattr(model.model, 'predict_proba'):
-                y_pred_proba = model.model.predict_proba(X_test)[:, 1]
-                pred_data['y_pred_proba'] = y_pred_proba
-            
+
+            # Determine inner object to check for predict_proba / feature_importances_
+            inner = getattr(model, 'model', model)
+
+            # Get probability predictions if available on the inner object
+            if hasattr(inner, 'predict_proba'):
+                try:
+                    probs = inner.predict_proba(X_test)
+                    # If shape is (n,2), take positive-class column
+                    if hasattr(probs, 'shape') and probs.shape[-1] > 1:
+                        y_pred_proba = probs[:, 1]
+                    else:
+                        y_pred_proba = probs
+                    pred_data['y_pred_proba'] = y_pred_proba
+                except Exception:
+                    # Fail gracefully if predict_proba exists but errors
+                    pass
+
             model_predictions[name] = pred_data
-        
+
         # 3. Confusion matrices
         output_paths['confusion_matrices'] = self.generate_confusion_matrices(model_predictions)
-        
+
         # 4. ROC curves (only if probability predictions available)
         if any('y_pred_proba' in pred for pred in model_predictions.values()):
             output_paths['roc_curves'] = self.generate_roc_curves(model_predictions)
-        
+
         # 5. Feature importance for tree-based models
         for name, model in models_dict.items():
-            path = self.generate_feature_importance(model.model, feature_names, name)
+            inner = getattr(model, 'model', model)
+            path = self.generate_feature_importance(inner, feature_names, name)
             if path:
                 output_paths[f'feature_importance_{name}'] = path
-        
+
         # 6. Class distribution
         output_paths['class_distribution'] = self.generate_class_distribution(
             y_train_before, y_train_after
         )
-        
+
         print("="*50)
         print(f"✓ All visualizations saved to: {self.output_dir}/")
         print("="*50)
-        
+
         return output_paths
