@@ -1,11 +1,13 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from imblearn.over_sampling import RandomOverSampler
-from sklearn.preprocessing import StandardScaler
+# from imblearn.over_sampling import RandomOverSampler
+# from sklearn.preprocessing import StandardScaler
 from .config import AppConfig
 from .interfaces import IDataLoader, IPreprocessor, IVisualizer
 from .models import ModelEvaluator
 from typing import Optional
+from .sampling_strategy import SamplingStrategyFactory
+from .scaler_factory import ScalerFactory
 
 class PipelineOrchestrator:
     def __init__(self, config: AppConfig, loader: IDataLoader, 
@@ -33,18 +35,20 @@ class PipelineOrchestrator:
         self._feature_names = None
 
     def add_model(self, name: str, model_instance) -> None:
-        """Register a model with a name.
+        """
+        Register a model with a name.
 
         Args:
             name: Unique name for the model
-            model_instance: Object implementing ``train`` and ``predict`` (e.g., a SklearnModelAdapter)
+            model_instance: Object implementing ``train`` and ``predict``
         """
         if name in self.models:
             raise ValueError(f"Model with name '{name}' already registered")
         self.models[name] = model_instance
 
     def run(self, enable_visualization: bool = True) -> pd.DataFrame:
-        """Execute the full ML pipeline with optional visualization.
+        """
+        Execute the full ML pipeline with optional visualization.
         
         Args:
             enable_visualization: Whether to generate visualization plots
@@ -72,19 +76,37 @@ class PipelineOrchestrator:
         self._X_test = X_test
         self._y_test = y_test
 
-        print("4. Handling Imbalance (Training Set Only)...")
-        oversampler = RandomOverSampler(sampling_strategy='minority', 
-                                       random_state=self.config.random_state)
-        X_train_res, y_train_res = oversampler.fit_resample(X_train, y_train)
+        # 4. Handle Imbalance (Configurable)
+        if self.config.pipeline.enable_oversampling:
+            print(f"4. Handling Imbalance (Training Set Only) using '{self.config.pipeline.oversampling_method}'...")
+            
+            sampling_strategy = SamplingStrategyFactory.create_strategy(
+                method=self.config.pipeline.oversampling_method,
+                sampling_strategy=self.config.pipeline.oversampling_strategy,
+                random_state=self.config.random_state
+            )
+            
+            X_train_res, y_train_res = sampling_strategy.resample(X_train, y_train)
+        else:
+            print("4. Skipping Imbalance Handling (disabled in config)...")
+            X_train_res, y_train_res = X_train, y_train
         
         # Store for visualization
         self._y_train_after = y_train_res.copy()
 
-        print("5. Scaling Features...")
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train_res)
-        X_test_scaled = scaler.transform(X_test)
+        # 5. Scale Features (Configurable)
+        if self.config.pipeline.enable_scaling:
+            print(f"5. Scaling Features using '{self.config.pipeline.scaler_type}'...")
+            
+            scaler = ScalerFactory.create_scaler(self.config.pipeline.scaler_type)
+            X_train_scaled = scaler.fit_transform(X_train_res)
+            X_test_scaled = scaler.transform(X_test)
+        else:
+            print("5. Skipping Feature Scaling (disabled in config)...")
+            X_train_scaled = X_train_res
+            X_test_scaled = X_test
 
+        # 6. Train and Evaluate Models
         results = []
         for name, model in self.models.items():
             print(f"6. Training & Evaluating: {name}...")

@@ -12,6 +12,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from .models import SklearnModelAdapter
 from .config import ModelConfig
+# from sklearn.svm import SVC
 
 
 class ModelFactory:
@@ -27,6 +28,7 @@ class ModelFactory:
         "logistic_regression": LogisticRegression,
         "decision_tree": DecisionTreeClassifier,
         "random_forest": RandomForestClassifier,
+        # "svm": SVC
     }
     
     # Human-friendly names for display
@@ -34,6 +36,7 @@ class ModelFactory:
         "logistic_regression": "Logistic Regression",
         "decision_tree": "Decision Tree",
         "random_forest": "Random Forest",
+        # "svm": "Support Vector Machine"
     }
     
     @classmethod
@@ -54,7 +57,7 @@ class ModelFactory:
             ValueError: if model_type not found in registry
         """
         if model_type not in cls._model_registry:
-            available = " ".join(cls._model_registry.keys())
+            available = ", ".join(cls._model_registry.keys())
             raise ValueError(
                 f"Unknown model type: '{model_type}'. "
                 f"Available models: {available}"

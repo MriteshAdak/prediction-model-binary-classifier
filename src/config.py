@@ -69,6 +69,27 @@ class FeatureConfig:
     # target_column: str = "is_claim"
 
 @dataclass
+class PipelineConfig:
+    """
+    Configuration for pipeline processing steps.
+    
+    Controls data preprocessing, imbalance handling, and scaling behavior.
+    """
+    
+    # Imbalance Handling
+    enable_oversampling: bool = True
+    oversampling_method: str = "smote"  # Options: "random", "smote", "adasyn", "none"
+    oversampling_strategy: str = "minority"  # or "all", or float for specific ratio
+    
+    # Feature Scaling
+    enable_scaling: bool = True
+    scaler_type: str = "standard"  # Options: "standard", "minmax", "robust", "none"
+    
+    # Validation Strategy
+    validation_method: str = "holdout"  # Options: "holdout", "cv", "stratified_cv"
+    cv_folds: int = 5  # Used if validation_method is "cv" or "stratified_cv"
+
+@dataclass
 class ModelConfig:
     """
     Configuration for individual model hyperparameters.
@@ -102,12 +123,20 @@ class ModelConfig:
         "criterion": "gini",
         "max_features": "sqrt"
     })
+
+    # SVM hyperparametes
+    # svm: Dict[str, any] = field(default_factory=lambda: {
+    #     "C": 1.0,
+    #     "kernel": "rbf",
+    #     "gamma": "scale"
+    # })
     
     # Which models to train (can enable/disable models here)
     models_to_train: List[str] = field(default_factory=lambda: [
         "logistic_regression",
         "decision_tree",
-        "random_forest"
+        "random_forest",
+        # "svm"
     ])
 
 
@@ -125,5 +154,9 @@ class AppConfig:
     
     # Feature preprocessing configuration
     features: FeatureConfig = field(default_factory=FeatureConfig)
+
     # Model configuration
     models: ModelConfig = field(default_factory=ModelConfig)
+    
+    # Pipeline processing configuration
+    pipeline: PipelineConfig = field(default_factory=PipelineConfig)
