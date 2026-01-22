@@ -119,3 +119,19 @@ class IVisualizer(ABC):
             Dictionary mapping plot type to file path
         """
         pass
+
+class ISamplingStrategy(ABC):
+    """Interface for sampling strategies (Strategy Pattern)."""
+    
+    @abstractmethod
+    def resample(self, X, y) -> Tuple:
+        """Resample the dataset to handle class imbalance.
+        
+        Args:
+            X: Feature matrix
+            y: Target vector
+            
+        Returns:
+            Tuple of (X_resampled, y_resampled)
+        """
+        pass
