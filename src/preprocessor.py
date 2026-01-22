@@ -14,7 +14,7 @@ class InsurancePreprocessor(IPreprocessor):
     """
     
     def __init__(self, app_config: AppConfig) -> None:
-        self.feature_config = app_config
+        self.feature_config = app_config.features
         self.app_config = app_config
 
     def process(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
@@ -51,14 +51,14 @@ class InsurancePreprocessor(IPreprocessor):
         # 3. Float Conversion 
         # Coerce to numeric and ensure float dtype for consistency
         for col in self.feature_config.float_columns:
-            if col in data.columns
+            if col in data.columns:
                 data[col] = pd.to_numeric(data[col], errors='coerce').astype(float)
 
         # 4. Ordinal Encoding
         for col, categories in self.feature_config.ordinal_columns.items():
             if col in data.columns:
                 data[col] = data[col].astype(str)
-                enc = OrdinalEncoder(categories=[categories], handle_unknown='use_encoded_value', unknown_value=0)
+                enc = OrdinalEncoder(categories=[categories], handle_unknown='use_encoded_value', unknown_value=-1)
                 data[col] = enc.fit_transform(data[[col]])
                 data.drop(columns=["ncap_rating"], inplace=True)
 
