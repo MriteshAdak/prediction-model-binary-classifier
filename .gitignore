@@ -1,16 +1,18 @@
 # virtual env
-/venv
-/.venv
+venv/
+.venv/
 
 # cache
-/__pycache__
+__pycache__/
 *.pyc
 
-# tests
-
+# local only
+local/
+.pytest_cache/
+pytest.ini
 
 # misc
 .coverage
 
 # archive dirs
-/archive
+archive/
